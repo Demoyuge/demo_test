@@ -10,7 +10,7 @@ class Config(object):
     # 不去追踪数据库的修改
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    # 配置redis 数据库 不是flask的扩展
+    # 配置redis 数据库 不是flask的扩展所以需要自己添加
     REDIS_HOST = "127.0.0.1"
     REDIS_PORT = 6379
 app = Flask(__name__)
