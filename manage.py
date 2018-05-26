@@ -6,22 +6,7 @@ from werkzeug.routing import BaseConverter
 
 
 
-app = create_app('pro')
-
-# app = Flask(__name__)
-# # 获取配置信息
-# app.config.from_object(Config)
-#
-# # 创建连接数据库对象
-# db = SQLAlchemy(app)
-#
-# #创建连接到redis 数据库的对象
-# redis_store = StrictRedis(host=Config.REDIS_HOST,port=Config.REDIS_PORT)
-#
-# #开启CSRF保护
-# CSRFProtect(app)
-# # 将session数据存储在后端的位置
-# Session(app)
+app = create_app('dev')
 
 # 创建脚本管理对象
 manager = Manager(app)
