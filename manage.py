@@ -8,8 +8,6 @@ from werkzeug.routing import BaseConverter
 
 app = create_app('pro')
 
-
-
 # app = Flask(__name__)
 # # 获取配置信息
 # app.config.from_object(Config)
