@@ -19,15 +19,15 @@ manager.add_command('mysql', MigrateCommand)
 
 
 
-@app.route("/")
-def index():
-    # redis_store.set("name","zzy")
-    # from flask import session
-    # # 会将{'age':'2'}写入到cookie
-    # session['age'] = '2'
-
-    return "index page"
+# @app.route("/")
+# def index():
+#     # redis_store.set("name","zzy")
+#     # from flask import session
+#     # # 会将{'age':'2'}写入到cookie
+#     # session['age'] = '2'
+#
+#     return "index page"
 
 if __name__ == "__main__":
-
+    print(app.url_map)
     manager.run()
