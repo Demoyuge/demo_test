@@ -52,4 +52,8 @@ def create_app(config_name):
     # 注册路由
     # from info.modules.index import index_blue
     app.register_blueprint(index_blue)
+    from info.modules.passport import passport_blue
+    # 注册路由
+    # from info.modules.index import index_blue
+    app.register_blueprint(passport_blue)
     return  app
