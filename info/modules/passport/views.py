@@ -8,6 +8,60 @@ from flask import  json
 from info.libs.yuntongxun.sms import CCP
 from info.models import User
 
+@passport_blue.route('/login', methods=['POST'])
+def login():
+    """登录
+    1.获取参数（手机号，密码明文）
+    2.校验参数（判断参数是否缺少和手机号是否合法）
+    3.还使用手机号查询用户信息
+    4.校验用户密码是否正确
+    5.将状态保持信息写入到session,完成登录
+    6.记录最后一次登录时间
+    7.响应登录结果
+    """
+    # 1.获取参数（手机号，密码明文）
+    json_dict = request.json
+    mobile = json_dict.get('mobile')
+    password = json_dict.get('password')
+
+    # 2.校验参数（判断参数是否缺少和手机号是否合法）
+    if not all([mobile, password]):
+        return jsonify(errno=response_code.RET.PARAMERR, errmsg='缺少参数')
+    if not re.match(r'^1[345678][0-9]{9}$', mobile):
+        return jsonify(errno=response_code.RET.PARAMERR, errmsg='手机号格式错误')
+
+    # 3.还使用手机号查询用户信息
+    try:
+        user = User.query.filter(User.mobile==mobile).first()
+    except Exception as e:
+        current_app.logger.error(e)
+        return jsonify(errno=response_code.RET.DBERR, errmsg='查询用户数据失败')
+    if not user:
+        return jsonify(errno=response_code.RET.PARAMERR, errmsg='用户名或密码错误')
+
+    # 4.校验用户密码是否正确
+    if not user.check_password(password):
+        return jsonify(errno=response_code.RET.PWDERR, errmsg='用户名或密码错误')
+
+    # 5.将状态保持信息写入到session,完成登录
+    session['user_id'] = user.id
+    session['mobile'] = user.mobile
+    session['nick_name'] = user.nick_name
+
+    # 6.记录最后一次登录的时间
+    user.last_login = datetime.datetime.now()
+    try:
+        db.session.commit()
+    except Exception as e:
+        current_app.logger.error(e)
+        db.session.rollback()
+        return jsonify(errno=response_code.RET.DBERR, errmsg='记录最后一次登录的时间失败')
+
+    # 7.响应登录结果
+    return jsonify(errno=response_code.RET.OK, errmsg='登录成功')
+
+
+
 @passport_blue.route('/register', methods=['POST'])
 def register():
     """注册
@@ -53,21 +107,28 @@ def register():
     # TODO 密码需要加密后再存储
     # user.password_hash = password
     # 记录最后一次登录的时间
+    # 密码需要加密后再存储
+    # 方案一：在这个视图中，直接调用对应的密码加密的算法，加密密码存储到数据库
+    # 方案二: 在这个视图中，封装一个加密的方法，加密密码存储到数据库
+    # 方案三：在模型类中新增一个属性叫做password,并加载setter和getter方法，调用setter，直接完成密码加密存储
+    # psd = user.password
+    user.password = password#setter 方法
     user.last_login = datetime.datetime.now()
 
-    # 6.将模型数据同步到数据库
+    # # 6.将模型数据同步到数据库
     try:
         db.session.add(user)
         db.session.commit()
     except Exception as e:
         current_app.logger.error(e)
+        db.session.rollback()
         return jsonify(errno=response_code.RET.DBERR, errmsg='保存注册数据失败')
 
     # 7.保存session,实现状态保持，注册即登录
     session['user_id'] = user.id
     session['mobile'] = user.mobile
     session['nick_name'] = user.nick_name
- 
+
     # 8.响应注册结果
     return jsonify(errno=response_code.RET.OK, errmsg='注册成功')
 
@@ -84,13 +145,13 @@ def sms_code():
 #     1.{'mobiel':'12312312','image_code':'asdc','image_code_id':'uuid'}
     json_str = request.data
     json_dict = json.loads(json_str)
-    moblie = json_dict.get('mobile')
+    mobile = json_dict.get('mobile')
     image_code_client = json_dict.get('image_code')
     image_code_id = json_dict.get("image_code_id")
 #     2
-    if not all([moblie, image_code_client, image_code_id]):
+    if not all([mobile, image_code_client, image_code_id]):
         return  jsonify(errno= response_code.RET.PARAMERR,errmsg="缺少参数")
-    if not re.match(r'^1[345678][0-9]{9}$',moblie):
+    if not re.match(r'^1[345678][0-9]{9}$',mobile):
         return  jsonify(errno=response_code.RET.PARAMERR, errmsg ="手机号码格式错误" )
 
     try:
@@ -100,17 +161,17 @@ def sms_code():
         return  jsonify(errno = response_code.RET.DBERR, errmsg="查询图片的验证码")
     if not image_code_server:
         return jsonify(errno = response_code.RET.NODATA, errmsg="查询图片不存在")
-    if not image_code_server.lower() != image_code_client:
+    if image_code_server.lower() != image_code_client.lower():
         return jsonify(errno=response_code.RET.PARAMERR, errmsg="验证码有误")
 
     sms_code = '%6d' %random.randint(0,999999)
-
-    result = CCP().send_template_sms(moblie,[sms_code,5],1)
-    if result !=0:
-        return jsonify(errno=response_code.RET.THIRDERR, errmsg="短信发送失败")
+    current_app.logger.debug(sms_code)
+    # result = CCP().send_template_sms(mobile,[sms_code,5],1)
+    # if result !=0:
+    #     return jsonify(errno=response_code.RET.THIRDERR, errmsg="短信发送失败")
 
     try:
-        redis_store.set('SMS:'+moblie,sms_code,constants.SMS_CODE_REDIS_EXPIRES)
+        redis_store.set('SMS:'+mobile,sms_code,constants.SMS_CODE_REDIS_EXPIRES)
     except Exception as e:
         current_app.logger.error(e)
         return jsonify(errno=response_code.RET.DBERR, errmsg="保存短信验证码失败")
@@ -136,7 +197,7 @@ def image_code():
         abort(403)
     # 3
     name, text, image = captcha.generate_captcha()
-
+    current_app.logger.debug(text)
     try:
         redis_store.set('ImageCode:'+ imageCodeId,text,constants.IMAGE_CODE_REDIS_EXPIRES)
     except Exception as e:
