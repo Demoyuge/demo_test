@@ -45,7 +45,7 @@ def create_app(config_name):
     redis_store = StrictRedis(host=configs[config_name].REDIS_HOST,port=configs[config_name].REDIS_PORT,decode_responses=True)
 
     #开启CSRF保护
-    CSRFProtect(app)
+    # CSRFProtect(app)
     # 将session数据存储在后端的位置
     Session(app)
     from info.modules.index import index_blue
