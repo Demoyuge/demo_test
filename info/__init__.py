@@ -42,7 +42,7 @@ def create_app(config_name):
     db.init_app(app)
     #创建连接到redis 数据库的对象
     global redis_store
-    redis_store = StrictRedis(host=configs[config_name].REDIS_HOST,port=configs[config_name].REDIS_PORT)
+    redis_store = StrictRedis(host=configs[config_name].REDIS_HOST,port=configs[config_name].REDIS_PORT,decode_responses=True)
 
     #开启CSRF保护
     CSRFProtect(app)
