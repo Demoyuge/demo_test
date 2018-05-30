@@ -8,7 +8,7 @@ class Config(object):
     # 开启调试模式
     DEBUGE = True
     # 配置mysql连接信息
-    SQLALCHEMY_DATABASE_URI = 'mysql://root:mysql@127.0.0.1:3306/information_29'
+    SQLALCHEMY_DATABASE_URI = 'mysql://root:123456@127.0.0.1:3306/information_29'
     # 不去追踪数据库的修改
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 

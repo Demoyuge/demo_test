@@ -3,13 +3,13 @@ from logging.handlers import RotatingFileHandler
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from redis import StrictRedis
-from flask_wtf.csrf import CSRFProtect
+from flask_wtf.csrf import CSRFProtect, generate_csrf
 from flask_session import  Session
 # from config import  Config,DevelopmentConfig,UnittestConfig,ProductionConfig
 from config import configs
 import logging
 from logging.handlers import   RotatingFileHandler
-
+from info.utils.comment import  do_rank
 
 
 
@@ -45,7 +45,17 @@ def create_app(config_name):
     redis_store = StrictRedis(host=configs[config_name].REDIS_HOST,port=configs[config_name].REDIS_PORT,decode_responses=True)
 
     #开启CSRF保护
-    # CSRFProtect(app)
+    CSRFProtect(app)
+
+    #
+    @app.after_request
+    def setip_csrftoken(response):
+        csrf_token = generate_csrf()
+        response.set_cookie('csrf_token',csrf_token)
+        return response
+    #将自定义的过滤器函数，添加到app的过滤器列表中
+    #rank在模版中使用的别名
+    app.add_template_filter(do_rank,'rank')
     # 将session数据存储在后端的位置
     Session(app)
     from info.modules.index import index_blue
