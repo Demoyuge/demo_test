@@ -58,12 +58,27 @@ function updateNewsData() {
          if (response.errno == '0') {
             for (var i=0;i<response.data.news_dict_list.length;i++) {
                 var news = response.data.news_dict_list[i]
+                var user = response.data.news_userid_list[i]
                 var content = '<li>'
                 content += '<a href="#" class="news_pic fl"><img src="' + news.index_image_url + '?imageView2/1/w/170/h/170"></a>'
                 content += '<a href="#" class="news_title fl">' + news.title + '</a>'
                 content += '<a href="#" class="news_detail fl">' + news.digest + '</a>'
                 content += '<div class="author_info fl">'
-                content += '<div class="source fl">来源：' + news.source + '</div>'
+                if (user.id) {
+                    content += '<div class="author fl">'
+                    if (user.avatar_url){
+                        // alert(user.avatar_url)
+                        // alert(user.id)
+                        content += '<img src="' + '"+user.avatar_url"'+ '" alt="author">'
+                        content += '<a href="#">' + user.nick_name + '</a>'
+
+                   } else{
+                    content += '<img src="../../static/news/images/person.png" alt="author">'
+                    content += '<a href="#">乐鸣</a>'
+                        }
+                }else{
+                    content += '<div class="source fl">来源：' + news.source + '</div>'
+                    }
                 content += '<div class="time fl">' + news.create_time + '</div>'
                 content += '</div>'
                 content += '</li>'
