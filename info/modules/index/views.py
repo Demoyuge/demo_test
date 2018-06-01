@@ -3,7 +3,7 @@
 from . import  index_blue
 from info import redis_store
 from flask import render_template,current_app,session,request,jsonify
-from info.models import User,News
+from info.models import User,News,Category
 from info import constants,response_code
 
 @index_blue.route('/news_list')
@@ -18,7 +18,7 @@ def index_news_list():
   except Exception as e:
       current_app.logger.error(e)
       return jsonify(errno = response_code.RET.PARAMERR,errmsg = '参数错误'  )
-  if cid == 1:
+  if cid == 5:
     # 取出10条数据
         paginate =  News.query.order_by(News.create_time.desc()).paginate(page,per_page,False)
   else:
@@ -31,15 +31,23 @@ def index_news_list():
   current_page = paginate.page
   # 将模型对象列表转成字典
   news_dict_list = []
+  news_userid_list = []
   for news in news_list:
       news_dict_list.append(news.to_basic_dict())
+      if news.user_id:
+         news_userid_list.append(news.user.to_dict())
+      else:
+         news_userid_list.append([])
   # 构造响应客户端的数据
   data = {
       'news_dict_list' : news_dict_list,
       'total_page' : total_page,
-      'current_page' : current_page
+      'current_page' : current_page,
+      'news_userid_list':news_userid_list
   }
   return  jsonify(errno = response_code.RET.OK, errmsg = 'OK',data=data)
+
+
 @index_blue.route("/")
 def index():
     # redis_store.set('name', 'zzy')
@@ -52,16 +60,26 @@ def index():
             user = User.query.get(user_id)
         except Exception as e:
             current_app.logger.error(e)
-
+    # 2.新闻的点击排行
     news_clicks = []
     try:
        news_clicks  =News.query.order_by(News.clicks.desc()).limit(constants.CLICK_RANK_MAX_NEWS)
     except Exception as e:
         current_app.logger.error(e)
+    #     3.新闻的分类
+    categories = []
+    try:
+       categories =  Category.query.all()
+    except Exception as e:
+        current_app.logger.error(e)
+
+
     #构造模板上下文数据
     context = {
         'user': user,
-        'news_clicks':news_clicks
+        'news_clicks':news_clicks,
+        'categories':categories
+
     }
     """主页"""
     return render_template('news/index.html',context=context)

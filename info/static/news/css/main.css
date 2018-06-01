@@ -4,13 +4,19 @@ body{
 }
 .header_con{
     height:59px;
+    width: 100%;
     background:#fff;
     border-bottom:1px solid #ccc;
+    position: fixed;
+    top:0px;
+
 }
 .header{
     width:1200px;
     height:59px;
     margin:0px auto;
+
+
 }
 
 .logo{
@@ -23,6 +29,7 @@ body{
     width:600px;
     height:59px;
     margin-left:100px;
+
 }
 
 .menu li{
@@ -89,7 +96,7 @@ body{
 .conter_con{
     width:1200px;
     overflow:hidden;
-    margin:20px auto 0;
+    margin:80px auto 0;
 }
 
 .list_con{
@@ -655,13 +662,13 @@ body{
 
 
 .collected{
-    display:inline-block;
+    /*display:inline-block;*/
     width:100px;
     height:36px;
     color:#666;
     border-radius:4px;
     font-size:14px;
-    margin:0px 5px;
+    /*margin:0px 5px;*/
     background:url(../images/collect_icons.png) 15px -73px no-repeat #e6e6e6;
     position:relative;
     overflow:hidden;

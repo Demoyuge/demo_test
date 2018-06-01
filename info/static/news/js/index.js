@@ -1,7 +1,7 @@
-var currentCid = 1; // 当前分类 id
+var currentCid = 5; // 当前分类 id
 var cur_page = 1; // 当前页
 var total_page = 1;  // 总页数
-var data_querying = true;   // 是否正在向后台获取数据
+var data_querying = true;   // 是否正在向后台获取数据,如果为true
 
 
 $(function () {
@@ -43,6 +43,14 @@ $(function () {
 
         if ((canScrollHeight - nowScroll) < 100) {
             // TODO 判断页数，去更新新闻数据
+            if(!data_querying){
+                data_querying = true
+                //计算当前在第几页
+                cur_page +=1;
+                if (cur_page < total_page){
+                     updateNewsData();
+                }
+            }
         }
     })
 })
@@ -55,21 +63,29 @@ function updateNewsData() {
         // 每页多少条不用传，默认10条
     };
     $.get('/news_list',params,function (response) {
+        //得到响应后，表示一次加载数据结束了
+        data_querying = false;
+
          if (response.errno == '0') {
+             total_page = response.data.total_page;
+             if(cur_page == 1){
+                 $(".list_con").html("");
+            }
             for (var i=0;i<response.data.news_dict_list.length;i++) {
                 var news = response.data.news_dict_list[i]
                 var user = response.data.news_userid_list[i]
                 var content = '<li>'
-                content += '<a href="#" class="news_pic fl"><img src="' + news.index_image_url + '?imageView2/1/w/170/h/170"></a>'
-                content += '<a href="#" class="news_title fl">' + news.title + '</a>'
-                content += '<a href="#" class="news_detail fl">' + news.digest + '</a>'
+                content += '<a href="/news/detail/'+news.id+'" class="news_pic fl"><img src="' + news.index_image_url + '?imageView2/1/w/170/h/170"></a>'
+                content += '<a href="/news/detail/'+news.id+'" class="news_title fl">' + news.title + '</a>'
+                content += '<a href="/news/detail/'+news.id+'" class="news_detail fl">' + news.digest + '</a>'
                 content += '<div class="author_info fl">'
                 if (user.id) {
                     content += '<div class="author fl">'
                     if (user.avatar_url){
                         // alert(user.avatar_url)
                         // alert(user.id)
-                        content += '<img src="' + '"+user.avatar_url"'+ '" alt="author">'
+                        // content += '<img src="' + '"+user.avatar_url"'+ '" alt="author">'
+                        content += '<img src="../../static/news/images/person.png" alt="author">'
                         content += '<a href="#">' + user.nick_name + '</a>'
 
                    } else{
