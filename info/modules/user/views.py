@@ -4,7 +4,7 @@ from flask import render_template, g, redirect, url_for, request,jsonify,session
 from  info.utils.comment import user_login_data,current_app
 from  info import response_code, db, constants
 from info.utils.file_storage import upload_file
-from info.models import Category
+from info.models import Category,News
 
 @user_blue.route('/news_release',methods=['GET','POST'])
 @user_login_data
@@ -24,9 +24,48 @@ def news_release():
             'categories':categories
         }
         return render_template('news/user_news_release.html',context = context)
-    if response_code == 'POST':
-        pass
+    if request.method == 'POST':
+        title = request.form.get("title")
+        source ="个人发布"
+        digest = request.form.get("digest")
+        category_id = request.form.get("category_id")
+        index_image = request.files.get("index_image")
+        content  =request.form.get("content")
+    if not all([title,source,digest,content,index_image,category_id]):
+        return jsonify(errno=response_code.RET.PARAMERR,errmsg="缺少参数")
+    try:
+        index_image_data = index_image.read()
+    except Exception as e:
+        current_app.logger.error(e)
+        return jsonify(errno=response_code.RET.PARAMERR,errmsg="读取新闻图片失败")
 
+    try:
+        key = upload_file(index_image_data)
+    except Exception as e:
+        current_app.logger.error(e)
+        return  jsonify(errno=response_code.RET.THIRDERR,errmsg="上传新闻图片失败")
+
+     # 3. 初始化新闻模型，并设置相关数据
+    news = News()
+    news.title = title
+    news.digest = digest
+    news.source = source
+    news.content = content
+    news.index_image_url = constants.QINIU_DOMIN_PREFIX + key
+    news.category_id = category_id
+    news.user_id = g.user.id
+    # 1代表待审核状态
+    news.status = 1
+
+    try:
+        db.session.add(news)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(e)
+        return  jsonify(errno=response_code.RET.DBERR,errmsg="存储失败")
+
+    return jsonify(errno=response_code.RET.OK,srrmsg="成功")
 
 @user_blue.route('/user_collection')
 @user_login_data
