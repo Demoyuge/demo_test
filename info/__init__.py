@@ -1,6 +1,6 @@
 from logging.handlers import RotatingFileHandler
 
-from flask import Flask
+from flask import Flask, render_template, g
 from flask_sqlalchemy import SQLAlchemy
 from redis import StrictRedis
 from flask_wtf.csrf import CSRFProtect, generate_csrf
@@ -9,7 +9,6 @@ from flask_session import  Session
 from config import configs
 import logging
 from logging.handlers import   RotatingFileHandler
-
 
 
 
@@ -57,6 +56,17 @@ def create_app(config_name):
     #rank在模版中使用的别名
     from info.utils.comment import do_rank
     app.add_template_filter(do_rank,'rank')
+
+    # from info.utils.comment import user_login_data
+    @app.errorhandler(404)
+    # @user_login_data
+    def page_not_found(e):
+        # user  = g.user
+        context = {
+            # 'user':user.to_dict() if user else None
+        }
+        return render_template('news/404.html',context = context)
+
     # 将session数据存储在后端的位置
     Session(app)
     from info.modules.index import index_blue
