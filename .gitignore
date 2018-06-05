@@ -5,6 +5,7 @@ __pycache__/
 logs/log*
 migrations
 # C extensions
+.qiniu*
 *.so
 .idea/
 # Distribution / packaging
