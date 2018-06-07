@@ -1,11 +1,179 @@
 #后台管理
 import time,datetime
-from info.models import User
+
+from info import constants, response_code, db
+from info.models import User, News
 from info.utils.comment import user_login_data
 from  . import  admin_blue
-from flask import request, render_template, current_app, session,redirect,url_for,g
+from flask import request, render_template, session, redirect, url_for, g, abort, current_app, jsonify
 
 
+@admin_blue.route('/news_edit')
+def news_edit():
+    page = request.args.get('p','1')
+
+    try:
+        page = int(page)
+    except Exception as e:
+        current_app.logger.error(e)
+        page = '1'
+        abort(404)
+    news_list = []
+    total_page = 1
+    current_page = 1
+    try:
+        paginate = News.query.filter(News.status==0).order_by(News.create_time.desc()).paginate(page,constants.ADMIN_NEWS_PAGE_MAX_COUNT,False)
+        news_list = paginate.items
+        total_page = paginate.pages
+        current_page  =paginate.page
+    except Exception as e:
+        current_app.logger.error(e)
+        abort(404)
+
+    news_dict_list = []
+    for news in  news_list:
+        news_dict_list.append(news.to_review_dict())
+    context  = {
+        'news_list':news_list,
+        'total_page':total_page,
+        'current_page':current_page
+    }
+    return render_template('admin/news_edit.html',context = context)
+
+
+
+@admin_blue.route('/news_review_action', methods=['POST'])
+def news_revie_action():
+    #1接受参数
+    news_id = request.json.get('news_id')
+    action  = request.json.get('action')
+
+    if not  all([news_id,action]):
+        return  jsonify(errno=response_code.RET.PARAMERR,errmsg='缺少参数')
+    if action not in ['accept','reject']:
+        return  jsonify(errno=response_code.RET.PARAMERR,errmsg='参数错误')
+    #查询待审核的新闻是否存在
+    news = None
+    try:
+        news = News.query.get(news_id)
+    except Exception as e:
+        current_app.logger.error(e)
+        return  jsonify(errno=response_code.RET.DBERR,errmsg='查询新闻失败')
+
+        # abort(404)
+    if not news:
+        return  jsonify(errno=response_code.RET.NODATA,errmsg='缺少参数')
+        # abort(404)
+    if action == 'accept':
+        news.status = 0
+    else:
+        #拒绝通过
+        news.status = -1
+        #拒绝原因
+        reason = request.json.get('reason')
+        if not reason:
+            return jsonify(errno=response_code.RET.PARAMERR, errmsg='缺少参数')
+        news.reason = reason
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(e)
+        return  jsonify(errno=response_code.RET.DBERR,errmsg='保存数据失败')
+
+    return jsonify(errno=response_code.RET.OK, errmsg='成功')
+
+
+@admin_blue.route('/news_review_detail/<int:news_id>')
+def news_review_detail(news_id):
+    # 1查询新闻要审核的新闻详情
+    news =None
+    try:
+        news  = News.query.get(news_id)
+    except Exception as e:
+        current_app.logger.error(e)
+        abort(404)
+    if not news:
+        abort(404)
+    context = {
+        'news': news.to_dict()
+    }
+    return render_template('admin/news_review_detail.html',context = context)
+
+@admin_blue.route('/news_review')
+def news_review():
+    page = request.args.get('p','1')
+    keyword = request.args.get('keyword')
+
+    try:
+        page = int(page)
+    except Exception as e:
+        current_app.logger.error(e)
+        page = '1'
+
+    news_list = []
+    total_page = 1
+    current_page =1
+    try:
+        if keyword:
+            paginate = News.query.filter(News.title.contains(keyword), News.status != 0).order_by(
+                News.create_time.desc()).paginate(page, constants.ADMIN_NEWS_PAGE_MAX_COUNT, False)
+        else:
+            paginate = News.query.filter(News.status != 0).order_by(News.create_time.desc()).paginate(page,
+                                                                                                      constants.ADMIN_NEWS_PAGE_MAX_COUNT,
+                                                                                                      False)
+        news_list=paginate.items
+        total_page = paginate.pages
+        current_page = paginate.page
+    except Exception as e:
+        current_app.logger.error(e)
+        abort(404)
+    news_dict_list = []
+    for news in news_list:
+        news_dict_list.append(news.to_review_dict())
+    context = {
+        'news_list': news_dict_list,
+        'total_page': total_page,
+        'current_page': current_page
+    }
+    return  render_template('admin/news_review.html',context=context)
+
+@admin_blue.route('/user_list')
+def user_list():
+    # 接受参数
+    page = request.args.get('p','1')
+    # 校验
+    try:
+        page = int(page)
+    except Exception as e:
+        current_app.logger.error(e)
+        page = '1'
+
+    users = []
+    total_page = 1
+    current_app = 1
+    try:
+        paginate = User.query.filter(User.is_admin == False).paginate(page, constants.ADMIN_USER_PAGE_MAX_COUNT, False)
+        users = paginate.items
+        total_page = paginate.pages
+        current_page = paginate.page
+    except Exception as e:
+        current_app.logger.error(e)
+        abort(404)
+
+    user_dict_list = []
+    for user in users:
+        user_dict_list.append(user.to_admin_dict())
+
+    # 4.构造渲染数据
+    context = {
+        'users': user_dict_list,
+        'total_page': total_page,
+        'current_page': current_page
+    }
+
+    return render_template('admin/user_list.html', context=context)
 
 @admin_blue.route('/user_count')
 def user_count():
@@ -41,10 +209,45 @@ def user_count():
     except Exception as e:
         current_app.logger.error(e)
 
+
+    active_date = []
+    active_count = []
+    # 查询今天开始的时间 06月04日 00:00:00
+    # 获取当天开始时时间字符串
+    today_begin = '%d-%02d-%02d' % (t.tm_year, t.tm_mon, t.tm_mday)
+    # 获取当前开始时时间对象
+    today_begin_date = datetime.datetime.strptime(today_begin, '%Y-%m-%d')
+
+
+
+    for i in range(0, 15):
+        # 计算一天开始
+        begin_date = today_begin_date - datetime.timedelta(days=i)
+        # 计算一天结束
+        end_date = today_begin_date - datetime.timedelta(days=(i - 1))
+
+        # 将X轴对应的开始时间记录
+        # strptime : 将时间字符串转成时间对象
+        # strftime : 将时间对象转成时间字符串
+        active_date.append(datetime.datetime.strftime(begin_date, '%Y-%m-%d'))
+
+        try:
+            count = User.query.filter(User.is_admin == False, User.last_login >= begin_date,
+                                      User.last_login < end_date).count()
+            active_count.append(count)
+        except Exception as e:
+            current_app.logger.error(e)
+
+    # 反转列表：保证时间线从左到右递增
+    active_date.reverse()
+    active_count.reverse()
+
     context = {
         'total_count': total_count,
         'month_count': month_count,
-        'day_count': day_count
+        'day_count': day_count,
+        'active_date': active_date,
+        'active_count': active_count
     }
 
     return render_template('admin/user_count.html', context=context)

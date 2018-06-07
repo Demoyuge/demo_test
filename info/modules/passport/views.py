@@ -16,6 +16,7 @@ def logout():
         session.pop('user_id',None)
         session.pop('mobile',None)
         session.pop('nick_name', None)
+        session.pop('is_admin',False)
     except Exception as e:
         current_app.logger.debug(e)
         return jsonify(errno=response_code.RET.DATAERR, errmsg='退出登录失败')

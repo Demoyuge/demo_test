@@ -20,7 +20,8 @@ def index_news_list():
       return jsonify(errno = response_code.RET.PARAMERR,errmsg = '参数错误'  )
   if cid == 5:
     # 取出10条数据
-        paginate =  News.query.order_by(News.create_time.desc()).paginate(page,per_page,False)
+    #     paginate =  News.query.order_by(News.create_time.desc()).paginate(page,per_page,False)
+    paginate = News.query.filter(News.status == 0).order_by(News.create_time.desc()).paginate(page,per_page,False)
   else:
         paginate = News.query.filter(News.category_id == cid).order_by(News.create_time.desc()).paginate(page,per_page,False)
   # 构造响应的新闻列表数据
