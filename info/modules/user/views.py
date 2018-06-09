@@ -6,6 +6,7 @@ from info import response_code,db,constants
 from info.utils.file_storage import upload_file
 from info.models import Category,News,User
 
+
 @user_blue.route('/other_news_list')
 def other_news_list():
     # 1.获取页数
