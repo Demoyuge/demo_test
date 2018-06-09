@@ -1,14 +1,149 @@
-#个人中心
-from . import  user_blue
-from flask import render_template, g, redirect, url_for, request,jsonify,session
-from  info.utils.comment import user_login_data,current_app
-from  info import response_code, db, constants
+# 个人中心
+from . import user_blue
+from flask import render_template,g,redirect,url_for,request,jsonify,current_app,session,abort
+from info.utils.comment import user_login_data
+from info import response_code,db,constants
 from info.utils.file_storage import upload_file
-from info.models import Category,News
+from info.models import Category,News,User
+
+@user_blue.route('/other_news_list')
+def other_news_list():
+    # 1.获取页数
+    page = request.args.get("p", '1')
+    other_id = request.args.get("user_id")
+
+    # 2.校验参数
+    try:
+        p = int(page)
+    except Exception as e:
+        current_app.logger.error(e)
+        return jsonify(errno=response_code.RET.PARAMERR, errmsg='参数错误')
+
+    if not all([page, other_id]):
+        return jsonify(errno=response_code.RET.PARAMERR, errmsg='缺少参数')
+
+    # 3.查询用户数据
+    try:
+        user = User.query.get(other_id)
+    except Exception as e:
+        current_app.logger.error(e)
+        return jsonify(errno=response_code.RET.DBERR, errmsg='查询用户数据失败')
+    if not user:
+        return jsonify(errno=response_code.RET.NODATA, errmsg='用户不存在')
+
+    # 4.分页查询
+    try:
+        paginate = News.query.filter(News.user_id == user.id).paginate(p, constants.OTHER_NEWS_PAGE_MAX_COUNT, False)
+        # 获取当前页数据
+        news_list = paginate.items
+        # 获取当前页
+        current_page = paginate.page
+        # 获取总页数
+        total_page = paginate.pages
+    except Exception as e:
+        current_app.logger.error(e)
+        return jsonify(errno=response_code.RET.DBERR, errmsg='查询用户数据失败')
+
+    # 5.构造响应数据
+    news_dict_list = []
+    for news_item in news_list:
+        news_dict_list.append(news_item.to_review_dict())
+
+    data = {
+        "news_list": news_dict_list,
+        "total_page": total_page,
+        "current_page": current_page
+    }
+
+    # 6.渲染界面
+    return jsonify(errno=response_code.RET.OK, errmsg='OK',data=data)
+
+@user_blue.route('/other_info')
+@user_login_data
+def other_info():
+    """其他用户概况"""
+
+    # 1.获取登录用户信息
+    login_user = g.user
+    if not login_user:
+        return redirect(url_for('index.index'))
+
+    # 获取被登录用户关注的用户的信息
+    other_id = request.args.get('user_id')
+    if not other_id:
+        abort(404)
+
+    # 查询要展示的被关注的用户的信息
+    other = None
+    try:
+        other = User.query.get(other_id)
+    except Exception as e:
+        current_app.logger.error(e)
+        abort(404)
+    if not other:
+        abort(404)
+
+    # 判断关注和取消关注的显示
+    is_followed = False
+    if login_user and other:
+        if other in login_user.followed:
+            is_followed = True
+
+    context = {
+        'user':login_user.to_dict(),
+        'other':other.to_dict(),
+        'is_followed':is_followed
+    }
+
+    return render_template('news/other.html',context=context)
 
 
+@user_blue.route('/user_follow')
+@user_login_data
+def user_followed():
+    """我的关注"""
 
+    # 1.获取登录用户信息
+    login_user = g.user
+    if not login_user:
+        return redirect(url_for('index.index'))
 
+    # 2.接受参数
+    page = request.args.get('p', '1')
+
+    # 3.校验参数
+    try:
+        page = int(page)
+    except Exception as e:
+        current_app.logger.error(e)
+        page = '1'
+
+    # 4.查询登录用户关注的用户 （login_user.followed）
+    followed_user_list = []
+    total_page = 1
+    current_page = 1
+    try:
+        paginate = login_user.followed.paginate(page,constants.USER_FOLLOWED_MAX_COUNT,False)
+        followed_user_list = paginate.items
+        total_page = paginate.pages
+        current_page = paginate.page
+    except Exception as e:
+        current_app.logger.error(e)
+        abort(404)
+
+    # 5.构造渲染数据
+    followed_dict_list = []
+    for followed_user in followed_user_list:
+        followed_dict_list.append(followed_user.to_dict())
+
+    context = {
+        'users':followed_dict_list,
+        'total_page':total_page,
+        'current_page':current_page
+    }
+
+    # 6.响应结果
+    return render_template('news/user_follow.html',context=context)
 
 @user_blue.route('/news_list')
 @user_login_data
