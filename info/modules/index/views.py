@@ -8,7 +8,7 @@ from info import constants,response_code
 
 @index_blue.route('/news_list')
 def index_news_list():
-  cid = request.args.get('cid','1')
+  cid = request.args.get('cid','5')
   page = request.args.get('page','1')
   per_page = request.args.get('per_page','10')
   try:
@@ -21,9 +21,9 @@ def index_news_list():
   if cid == 5:
     # 取出10条数据
     #     paginate =  News.query.order_by(News.create_time.desc()).paginate(page,per_page,False)
-    paginate = News.query.filter(News.status == 0).order_by(News.create_time.desc()).paginate(page,per_page,False)
+        paginate = News.query.filter(News.status == 0).order_by(News.create_time.desc()).paginate(page,per_page,False)
   else:
-        paginate = News.query.filter(News.category_id == cid).order_by(News.create_time.desc()).paginate(page,per_page,False)
+        paginate = News.query.filter(News.status == 0,News.category_id == cid).order_by(News.create_time.desc()).paginate(page,per_page,False)
   # 构造响应的新闻列表数据
   news_list = paginate.items
   # 读取分页的总页数
